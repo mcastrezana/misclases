@@ -454,8 +454,8 @@ function createGroup() {
   const studentsRaw = document.getElementById('ng-students').value.trim().split('\n').filter(l => l.trim());
   if (!name || !subject || !startDate || !endDate) { toast('Completa nombre, materia y fechas', 'error'); return; }
   // Código = lo que escribió el docente en el campo, o el nombre tal cual
-  const rawCode = document.getElementById('ng-code')?.value.trim() || name.trim();
-  const code = rawCode.toUpperCase();
+  const codeField = document.getElementById('ng-code')?.value.trim();
+  const code = (codeField || name.trim()).toUpperCase();
   if (!code) { toast('Ingresa un nombre de grupo', 'error'); return; }
   if (DB.getGroups().find(g => g.code === code)) { toast('Ese codigo ya existe, elige otro', 'error'); return; }
   const students = studentsRaw.map(l => ({ name: l.trim(), registered: false, phone: '', pass: '' }));
@@ -528,7 +528,7 @@ function switchAttTab(tab, btn) {
 function suggestCode(name) {
   const el = document.getElementById('ng-code');
   if (!el || el.dataset.manual === 'true') return;
-  el.value = name.trim().toUpperCase();
+  el.value = name.trim(); // Mantener mayúsculas/minúsculas del nombre
   el.addEventListener('input', () => el.dataset.manual = 'true', { once: true });
 }
 
@@ -740,7 +740,8 @@ function renderGroupDetail(group) {
     <!-- COMPARTIR -->
     <div id="dt-share" class="detail-panel">
       <div class="qr-container">
-        <p style="font-size:14px;margin-bottom:16px">Comparte este código o QR con tus alumnos para que se registren:</p>
+        <p style="font-size:14px;margin-bottom:8px">Comparte este código o QR con tus alumnos para que se registren:</p>
+        <p style="font-size:12px;color:var(--text2);margin-bottom:12px">Si el codigo no coincide con el nombre del grupo, ve a <b>✏️ Editar</b> y cambia el codigo manualmente.</p>
         <div class="qr-code">${qrDataUrl ? `<img src="${qrDataUrl}" style="width:100%;height:100%;border-radius:8px" />` : `<p>Instala la app para ver QR</p>`}</div>
         <p style="font-size:13px;color:var(--text2);margin-top:8px">Código de grupo:</p>
         <div class="code-display">${group.code}</div>
@@ -1044,16 +1045,35 @@ function renderActivityDetail(aid) {
 
     <!-- CALIFICAR BATCH -->
     <div id="ad-grades" class="detail-panel">
-      <p style="font-size:13px;color:var(--text2);margin-bottom:12px">Captura rápida de calificaciones</p>
-      ${students.map(s => {
-        const sub = subs.find(ss => ss.studentName === s.name);
-        return `<div style="display:flex;align-items:center;gap:10px;margin-bottom:8px">
-          <div style="flex:1;font-size:13px;font-weight:600">${s.name}</div>
-          <input type="number" min="0" max="${act.points}" class="grade-input" id="bg-${s.name.replace(/\s/g,'_')}" value="${sub && sub.grade ? sub.grade : ''}" placeholder="-" />
-          <span style="font-size:11px;color:var(--text2)">/${act.points}</span>
-        </div>`;
-      }).join('')}
-      <button class="btn-primary full" style="margin-top:12px" onclick="App.saveBatchGrades('${aid}')">Guardar todas</button>
+      ${act.type === 'proyecto' ? `
+        <p style="font-size:13px;color:var(--text2);margin-bottom:4px">Proyecto Integrador — captura parte <b>Teórica</b> y <b>Exposición</b> por separado.</p>
+        <p style="font-size:12px;color:var(--accent);margin-bottom:12px">Ponderación: ${projW ? projW.teorico : 50}% Teórico / ${projW ? projW.expo : 50}% Exposición</p>
+        <div style="display:grid;grid-template-columns:1fr auto auto;gap:8px;align-items:center;margin-bottom:6px;padding:0 4px">
+          <span style="font-size:11px;font-weight:700;color:var(--text2)">ALUMNO</span>
+          <span style="font-size:11px;font-weight:700;color:var(--text2);width:70px;text-align:center">TEÓRICO (/10)</span>
+          <span style="font-size:11px;font-weight:700;color:var(--text2);width:70px;text-align:center">EXPOSICIÓN (/10)</span>
+        </div>
+        ${students.map(s => {
+          const sg = (DB.getGrades()[act.groupId] || {})[s.name] || {};
+          return '<div style="display:grid;grid-template-columns:1fr auto auto;gap:8px;align-items:center;margin-bottom:8px;padding:8px;background:var(--bg3);border-radius:8px">' +
+            '<div style="font-size:13px;font-weight:600">' + s.name + '</div>' +
+            '<input type="number" min="0" max="10" step="0.1" class="grade-input" style="width:70px;text-align:center" id="pt-' + s.name.replace(/[^a-zA-Z0-9]/g,'_') + '" value="' + (sg.proyecto_teorico !== undefined ? sg.proyecto_teorico : '') + '" placeholder="-" />' +
+            '<input type="number" min="0" max="10" step="0.1" class="grade-input" style="width:70px;text-align:center" id="pe-' + s.name.replace(/[^a-zA-Z0-9]/g,'_') + '" value="' + (sg.proyecto_expo !== undefined ? sg.proyecto_expo : '') + '" placeholder="-" />' +
+          '</div>';
+        }).join('')}
+        <button class="btn-primary full" style="margin-top:8px" onclick="App.saveProyectoGrades('${aid}')">Guardar calificaciones del proyecto</button>
+      ` : `
+        <p style="font-size:13px;color:var(--text2);margin-bottom:12px">Captura rápida de calificaciones</p>
+        ${students.map(s => {
+          const sub = subs.find(ss => ss.studentName === s.name);
+          return '<div style="display:flex;align-items:center;gap:10px;margin-bottom:8px">' +
+            '<div style="flex:1;font-size:13px;font-weight:600">' + s.name + '</div>' +
+            '<input type="number" min="0" max="' + act.points + '" class="grade-input" id="bg-' + s.name.replace(/\s/g,'_') + '" value="' + (sub && sub.grade ? sub.grade : '') + '" placeholder="-" />' +
+            '<span style="font-size:11px;color:var(--text2)">/' + act.points + '</span>' +
+          '</div>';
+        }).join('')}
+        <button class="btn-primary full" style="margin-top:12px" onclick="App.saveBatchGrades('${aid}')">Guardar todas</button>
+      `}
     </div>
 
     <!-- EDITAR ACTIVIDAD -->
@@ -1088,6 +1108,33 @@ function editGrade(actId, studentName) {
   const subs = DB.getSubmissions();
   const i = subs.findIndex(s => s.activityId === actId && s.studentName === studentName);
   if (i >= 0) { subs[i].grade = null; DB.setSubmissions(subs); }
+  renderActivityDetail(actId);
+}
+
+function saveProyectoGrades(actId) {
+  const act = DB.getActivity(actId);
+  if (!act) return;
+  const group = DB.getGroup(act.groupId);
+  const students = act.targetAll ? (group?.students||[]) : (act.targets||[]).map(t=>({name:t}));
+  const grades = DB.getGrades();
+  if (!grades[act.groupId]) grades[act.groupId] = {};
+  let saved = 0;
+  students.forEach(s => {
+    const key = s.name.replace(/[^a-zA-Z0-9]/g,'_');
+    const tEl = document.getElementById('pt-' + key);
+    const eEl = document.getElementById('pe-' + key);
+    if (!grades[act.groupId][s.name]) grades[act.groupId][s.name] = {};
+    if (tEl && tEl.value !== '') {
+      grades[act.groupId][s.name].proyecto_teorico = parseFloat(tEl.value);
+      saved++;
+    }
+    if (eEl && eEl.value !== '') {
+      grades[act.groupId][s.name].proyecto_expo = parseFloat(eEl.value);
+      saved++;
+    }
+  });
+  DB.setGrades(grades);
+  toast('Proyecto guardado — ' + (saved/2|0) + ' alumnos', 'success');
   renderActivityDetail(actId);
 }
 
@@ -2028,7 +2075,7 @@ return { login, logout, showScreen, goStudentLogin, showStudentStep,
   openGroupDetail, renderGroups, switchDetailTab, showAddStudents, addStudents, removeStudent,
   showEditGroup, saveEditGroup, toggleArchiveGroup, deleteGroup,
   copyCode, openCreateActivity, createActivity, onActivityGroupChange,
-  openActivityDetail, goBackFromActivity, gradeSubmission, editGrade, saveBatchGrades,
+  openActivityDetail, goBackFromActivity, gradeSubmission, editGrade, saveBatchGrades, saveProyectoGrades,
   updateActivity, deleteActivity, reopenSubmission,
   prepareAttendanceSection, loadAttendanceList, setAttendance, saveAttendance,
   quickAttendance, importAttendancePDF, runImportPDF,
