@@ -197,21 +197,33 @@ function toggleTeacherLogin() {
 }
 
 function studentCheckCode() {
-  const code = document.getElementById('student-group-code').value.trim().toUpperCase();
-  const group = DB.getGroups().find(g => g.code === code);
-  if (!group) { toast('Código de grupo no encontrado', 'error'); return; }
+  const raw = document.getElementById('student-group-code').value.trim();
+  const code = raw.toUpperCase();
+  const group = DB.getGroups().find(g => g.code.toUpperCase() === code);
+  if (!group) { toast('Codigo de grupo no encontrado. Verifica mayusculas y espacios.', 'error'); return; }
   currentStudentGroup = group;
-  // Ver si ya tiene cuenta
-  const students = group.students || [];
-  document.getElementById('student-login-subtitle').textContent = `Grupo: ${group.name}`;
-  showStudentStep(3);
+  window.currentStudentGroup = group; // también en window para el parche
+  const sub = document.getElementById('student-login-subtitle');
+  if (sub) sub.textContent = 'Grupo: ' + group.name;
+  showStudentStep(2);
 }
 
 function showStudentStep(n) {
-  [1,2,3].forEach(i => {
+  [1,2,3,4].forEach(i => {
     const el = document.getElementById('student-login-step' + i);
     if (el) el.style.display = i === n ? 'block' : 'none';
   });
+  // Update subtitle
+  const sub = document.getElementById('student-login-subtitle');
+  if (sub) {
+    const labels = {
+      1: 'Registro — Codigo de grupo',
+      2: 'Registro — Tus datos',
+      3: 'Ingresa a tu cuenta',
+      4: 'Reglamento y firma'
+    };
+    if (labels[n]) sub.textContent = labels[n];
+  }
 }
 
 function studentRegister() {
@@ -2095,7 +2107,8 @@ return { login, logout, showScreen, goStudentLogin, showStudentStep,
   loadTeacherDashboard, loadTeacherApp, loadStudentApp,
   studentLoginDirect, loadParticipationSection, prepareParticipationSection, saveParticipationSection,
   setImportAtt, confirmImportAtt,
-  closeModal, createDemoData, init
+  closeModal, createDemoData, init,
+  getCurrentStudentGroup: () => currentStudentGroup
 };
 
 })();
@@ -2325,33 +2338,41 @@ Object.assign(App, (() => {
   function studentPreRegister() {
     const name = document.getElementById('student-reg-name')?.value.trim();
     const phone = document.getElementById('student-reg-phone')?.value.trim();
-    const pass = document.getElementById('student-reg-pass')?.value;
+    const pass = document.getElementById('student-reg-pass')?.value || '';
     const errEl = document.getElementById('student-reg-error');
     if (errEl) errEl.style.display = 'none';
 
-    if (!name || !phone || !pass || pass.length < 6) {
-      if (errEl) { errEl.textContent = 'Completa todos los campos (contrasena minimo 6 caracteres)'; errEl.style.display = 'block'; }
+    if (!name || !phone || pass.length < 6) {
+      if (errEl) { errEl.textContent = 'Completa todos los campos. Contrasena minimo 6 caracteres.'; errEl.style.display = 'block'; }
       return;
     }
 
-    // Obtener grupo actual
+    // Usar currentStudentGroup (seteado cuando el alumno puso el codigo)
     const groups = JSON.parse(localStorage.getItem('groups') || '[]');
-    const code = document.getElementById('student-group-code')?.value.trim().toUpperCase();
-    const group = groups.find(g => g.code === code);
-    if (!group) { if (errEl) { errEl.textContent = 'Grupo no encontrado'; errEl.style.display = 'block'; } return; }
+    // Buscar grupo: primero currentStudentGroup, luego por campo
+    let group = window.currentStudentGroup || App.getCurrentStudentGroup?.();
+    if (!group) {
+      const code = document.getElementById('student-group-code')?.value.trim().toUpperCase();
+      group = groups.find(g => g.code.toUpperCase() === code);
+    }
+    if (!group) {
+      if (errEl) { errEl.textContent = 'No se encontro el grupo. Regresa y vuelve a ingresar el codigo.'; errEl.style.display = 'block'; }
+      return;
+    }
 
     const students = group.students || [];
     const match = students.find(s => norm(s.name) === norm(name));
     if (!match) {
-      if (errEl) { errEl.textContent = 'Tu nombre no coincide con la lista. Verifica como apareces en la lista de asistencia.'; errEl.style.display = 'block'; }
+      if (errEl) { errEl.textContent = 'Tu nombre no coincide con la lista. Escribe exactamente como aparece en lista de asistencia.'; errEl.style.display = 'block'; }
       return;
     }
     if (match.registered) {
-      if (errEl) { errEl.textContent = 'Ya existe una cuenta con ese nombre. Usa la opcion de iniciar sesion.'; errEl.style.display = 'block'; }
+      if (errEl) { errEl.textContent = 'Ya tienes cuenta registrada. Usa "Ya tengo cuenta" para iniciar sesion.'; errEl.style.display = 'block'; }
       return;
     }
 
-    // Mostrar paso 4: reglamento
+    // Guardar referencia al grupo para el paso de firma
+    window.currentStudentGroup = group;
     showStudentStep4(group);
   }
 
