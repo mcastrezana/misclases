@@ -1,0 +1,517 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0" />
+  <meta name="theme-color" content="#1a1f2e" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+  <meta name="apple-mobile-web-app-title" content="MisClases" />
+  <title>MisClases Control Docente</title>
+  <link rel="manifest" href="manifest.json" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link href="https://fonts.googleapis.com/css2?family=Space+Mono:ital,wght@0,400;0,700;1,400&family=Syne:wght@400;600;700;800&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="style.css" />
+  <script>
+    // Llamador seguro - funciona aunque app.js aun no haya cargado
+    function _app(fn, args) {
+      if (window.App && window.App[fn]) {
+        window.App[fn].apply(null, args || []);
+      } else {
+        // Reintentar en 200ms
+        setTimeout(function(){ _app(fn, args); }, 200);
+      }
+    }
+  </script>
+</head>
+<body>
+<div id="app">
+
+  <!-- SPLASH -->
+  <div id="splash" class="screen active">
+    <div class="splash-bg"></div>
+    <div class="splash-content">
+      <div class="logo-mark">MC</div>
+      <h1 class="splash-title">MisClases</h1>
+      <p class="splash-sub">Control Docente</p>
+      <div class="splash-loader"><span></span></div>
+    </div>
+  </div>
+  <script>
+    // Garantia absoluta: si en 2s no cargo app.js, forzar login
+    setTimeout(function() {
+      var splash = document.getElementById('splash');
+      var login = document.getElementById('screen-login');
+      if (splash && splash.classList.contains('active')) {
+        splash.classList.remove('active');
+        if (login) login.classList.add('active');
+      }
+    }, 2000);
+  </script>
+
+  <!-- PANTALLA PRINCIPAL: alumnos primero -->
+  <div id="screen-login" class="screen">
+    <div class="login-wrap" style="justify-content:center;gap:20px">
+      <div class="login-header">
+        <div class="logo-mark sm">MC</div>
+        <h2>MisClases</h2>
+        <p>Plataforma educativa</p>
+      </div>
+      <!-- BOTON PRINCIPAL: alumno -->
+      <button class="btn-primary full" style="padding:18px;font-size:17px" onclick="_app('goStudentLogin')">
+        Soy Estudiante
+      </button>
+      <p style="text-align:center;color:var(--text3);font-size:13px">o</p>
+      <!-- SECCION DOCENTE (colapsable, pequeña) -->
+      <div id="teacher-login-section" style="display:none">
+        <div class="form-group">
+          <label>Usuario / Email</label>
+          <input type="text" id="login-user" placeholder="usuario@email.com" />
+        </div>
+        <div class="form-group">
+          <label>Contrasena</label>
+          <input type="password" id="login-pass" placeholder="contrasena" />
+        </div>
+        <div id="login-error" class="error-msg" style="display:none"></div>
+        <button class="btn-primary full" onclick="_app('login')">Entrar como Docente</button>
+      </div>
+      <button class="btn-outline" style="font-size:12px;padding:8px" onclick="(function(){var s=document.getElementById('teacher-login-section');s.style.display=s.style.display==='block'?'none':'block';})()">
+        Soy Profesor/a
+      </button>
+    </div>
+  </div>
+
+  <!-- LOGIN ALUMNO -->
+  <div id="screen-student-login" class="screen">
+    <div class="login-wrap">
+      <button class="back-btn" onclick="_app('showScreen',['login'])">← Atras</button>
+      <div class="login-header">
+        <div class="logo-mark sm">MC</div>
+        <h2>Acceso Estudiante</h2>
+        <p id="student-login-subtitle">Ingresa a tu cuenta</p>
+      </div>
+
+      <!-- PASO 3: LOGIN (se muestra primero al alumno) -->
+      <div id="student-login-step3">
+        <div class="form-group">
+          <label>Nombre de usuario</label>
+          <input type="text" id="student-login-name" placeholder="El usuario que elegiste" autocomplete="username" />
+        </div>
+        <div class="form-group">
+          <label>Contrasena</label>
+          <input type="password" id="student-login-passw" placeholder="Tu contrasena" autocomplete="current-password" />
+        </div>
+        <div id="student-login-error" class="error-msg" style="display:none"></div>
+        <div class="form-group">
+          <label>Codigo de grupo</label>
+          <input type="text" id="student-group-code-login" placeholder="ej. ADMIN1" style="text-transform:uppercase;font-family:var(--font-mono);letter-spacing:1px" />
+          <small class="hint-text">Tu maestra te comparte este codigo</small>
+        </div>
+        <button class="btn-primary full" style="margin-top:4px" onclick="_app('studentLoginDirect')">Entrar</button>
+        <div style="display:flex;align-items:center;gap:10px;margin:20px 0">
+          <hr style="flex:1;border:none;border-top:1px solid var(--border)" />
+          <span style="font-size:12px;color:var(--text3)">¿primera vez?</span>
+          <hr style="flex:1;border:none;border-top:1px solid var(--border)" />
+        </div>
+        <button class="btn-accent full" onclick="_app('showStudentStep',[1])">Registrarme</button>
+      </div>
+
+      <!-- PASO 1: Codigo de grupo (solo para registro) -->
+      <div id="student-login-step1" style="display:none">
+        <p style="font-size:13px;color:var(--text2);margin-bottom:14px;line-height:1.6">
+          Ingresa el <b style="color:var(--accent)">codigo de grupo</b> que te compartio tu maestra/o para registrarte.
+        </p>
+        <div class="form-group">
+          <label>Codigo de Grupo</label>
+          <input type="text" id="student-group-code" placeholder="ej. ADMIN1" style="text-transform:uppercase;font-family:var(--font-mono);letter-spacing:2px;font-size:20px;text-align:center" />
+        </div>
+        <button class="btn-primary full" onclick="_app('studentCheckCode')">Continuar</button>
+        <button class="back-btn" style="margin-top:12px;width:100%;text-align:center" onclick="_app('showStudentStep',[3])">← Ya tengo cuenta</button>
+      </div>
+
+      <!-- PASO 2: Datos de registro -->
+      <div id="student-login-step2" style="display:none">
+        <div class="form-group">
+          <label>Nombre completo (como aparece en lista)</label>
+          <input type="text" id="student-reg-name" placeholder="Apellido Apellido Nombre" />
+          <small class="hint-text">⚠ Escribe exactamente como aparece en la lista de asistencia</small>
+        </div>
+        <div class="form-group">
+          <label>Numero de celular</label>
+          <input type="tel" id="student-reg-phone" placeholder="10 digitos" />
+        </div>
+        <div class="form-group">
+          <label>Nombre de usuario</label>
+          <input type="text" id="student-reg-username" placeholder="ej. juan.gonzalez" style="text-transform:lowercase" />
+          <small class="hint-text">Corto y facil de recordar, con esto entras la proxima vez</small>
+        </div>
+        <div class="form-group">
+          <label>Contrasena</label>
+          <input type="password" id="student-reg-pass" placeholder="Minimo 6 caracteres" />
+        </div>
+        <div id="student-reg-error" class="error-msg" style="display:none"></div>
+        <button class="btn-primary full" onclick="_app('studentPreRegister')">Continuar</button>
+        <button class="back-btn" style="margin-top:10px;width:100%;text-align:center" onclick="_app('showStudentStep',[1])">← Regresar</button>
+      </div>
+
+      <!-- PASO 4: Reglamento (firma obligatoria) -->
+      <div id="student-login-step4" style="display:none">
+        <div class="reglamento-header">
+          <div class="reglamento-icon">📋</div>
+          <h3>Reglamento y Rubrica</h3>
+          <p>Lee con atencion. <strong>Firma para completar tu registro.</strong></p>
+        </div>
+        <div id="reglamento-doc-preview" class="reglamento-doc"></div>
+        <div class="firma-wrap">
+          <label class="firma-check-label">
+            <input type="checkbox" id="firma-check" onchange="App.toggleFirmaBtn(this)" />
+            <span>He leido y acepto el reglamento y la rubrica de evaluacion.</span>
+          </label>
+          <div class="form-group" style="margin-top:14px">
+            <label>Firma electronica — escribe tu nombre completo</label>
+            <input type="text" id="firma-nombre" placeholder="Apellido Apellido Nombre" />
+          </div>
+        </div>
+        <div id="student-firma-error" class="error-msg" style="display:none"></div>
+        <button class="btn-primary full" id="btn-firmar" disabled onclick="_app('studentRegister')">✍ Firmar y Registrarme</button>
+        <button class="back-btn" style="margin-top:10px;width:100%;text-align:center" onclick="_app('showStudentStep',[2])">← Regresar</button>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- APP DOCENTE -->
+  <div id="screen-teacher" class="screen">
+    <header class="app-header">
+      <div class="header-left">
+        <div class="logo-mark xs">MC</div>
+        <span id="teacher-greeting">Hola, Maestra</span>
+      </div>
+      <div class="header-right">
+        <button class="icon-btn" onclick="_app('showTeacherSection', ['profile'])" title="Mi Perfil">👤</button>
+        <button class="icon-btn" onclick="_app('logout')" title="Salir">⏻</button>
+      </div>
+    </header>
+
+    <nav class="bottom-nav">
+      <button class="nav-item active" data-section="dashboard" onclick="_app('showTeacherSection', ['dashboard'])">
+        <span class="nav-icon">⊞</span><span>Inicio</span>
+      </button>
+      <button class="nav-item" data-section="groups" onclick="_app('showTeacherSection', ['groups'])">
+        <span class="nav-icon">⬡</span><span>Grupos</span>
+      </button>
+      <button class="nav-item" data-section="attendance" onclick="_app('showTeacherSection', ['attendance'])">
+        <span class="nav-icon">✓</span><span>Asistencia</span>
+      </button>
+      <button class="nav-item" data-section="grades" onclick="_app('showTeacherSection', ['grades'])">
+        <span class="nav-icon">◈</span><span>Califs</span>
+      </button>
+      <button class="nav-item" data-section="wall" onclick="_app('showTeacherSection', ['wall'])">
+        <span class="nav-icon">◎</span><span>Muro</span>
+      </button>
+    </nav>
+
+    <main class="teacher-content">
+
+      <!-- DASHBOARD -->
+      <section id="t-dashboard" class="t-section active">
+        <div class="section-title-row">
+          <h2>Panel Principal</h2>
+          <span class="date-chip" id="today-date"></span>
+        </div>
+        <div class="stats-grid" id="stats-grid"></div>
+        <div class="quick-actions">
+          <h3>Acciones rapidas</h3>
+          <div class="qa-grid">
+            <button class="qa-btn" onclick="_app('quickAttendance')">
+              <span>✓</span>Pasar lista
+            </button>
+            <button class="qa-btn" onclick="_app('showTeacherSection', ['groups');App.showCreateGroup(])">
+              <span>+</span>Nuevo grupo
+            </button>
+            <button class="qa-btn" onclick="_app('openCreateActivity')">
+              <span>◈</span>Nueva actividad
+            </button>
+            <button class="qa-btn" onclick="_app('showTeacherSection', ['wall'])">
+              <span>◎</span>Publicar aviso
+            </button>
+          </div>
+        </div>
+        <div class="pending-submissions" id="pending-submissions-section">
+          <h3>Entregas pendientes de revisar</h3>
+          <div id="pending-list"></div>
+        </div>
+        <div class="pending-submissions" id="whatsapp-requests-section">
+          <h3>Solicitudes de reenvio (WhatsApp)</h3>
+          <div id="whatsapp-list"></div>
+        </div>
+      </section>
+
+      <!-- GRUPOS -->
+      <section id="t-groups" class="t-section">
+        <div class="section-title-row">
+          <h2>Mis Grupos</h2>
+          <button class="btn-accent sm" onclick="_app('showCreateGroup')">+ Nuevo</button>
+        </div>
+        <div id="groups-list"></div>
+      </section>
+
+      <!-- ASISTENCIA -->
+      <section id="t-attendance" class="t-section">
+        <div class="section-title-row">
+          <h2>Asistencia y Participacion</h2>
+        </div>
+        <div class="form-group">
+          <label>Grupo</label>
+          <select id="att-group-select" onchange="App.loadAttendanceList()">
+            <option value="">Selecciona grupo...</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label>Fecha</label>
+          <input type="date" id="att-date" />
+        </div>
+        <div class="tabs-row" style="margin-bottom:4px">
+          <button class="tab-btn att-tab-btn active" onclick="App.switchAttTab('asistencia', this)">Asistencia</button>
+          <button class="tab-btn att-tab-btn" onclick="App.switchAttTab('participacion', this)">Participacion</button>
+          <button class="tab-btn att-tab-btn" onclick="App.switchAttTab('resumen', this)">Tabla completa</button>
+        </div>
+        <div id="att-import-section" style="display:none;margin-bottom:8px">
+          <label class="upload-area" for="att-pdf-upload" style="padding:12px">
+            <span style="font-size:13px">📄 Importar desde PDF del portal</span>
+            <input type="file" id="att-pdf-upload" accept=".pdf,.txt" onchange="App.importAttendancePDF(this)" />
+          </label>
+        </div>
+        <div id="attendance-list-wrap"></div>
+        <div id="att-save-btn-wrap" style="display:none">
+          <button class="btn-primary full" onclick="_app('saveAttendance')">Guardar</button>
+        </div>
+      </section>
+
+      <!-- CALIFICACIONES -->
+      <section id="t-grades" class="t-section">
+        <div class="section-title-row">
+          <h2>Calificaciones</h2>
+        </div>
+        <div class="form-group">
+          <label>Grupo</label>
+          <select id="grades-group-select" onchange="App.loadGradesView()">
+            <option value="">Selecciona grupo...</option>
+          </select>
+        </div>
+        <div id="grades-view"></div>
+      </section>
+
+      <!-- MURO -->
+      <section id="t-wall" class="t-section">
+        <div class="section-title-row">
+          <h2>Muro de Avisos</h2>
+        </div>
+        <div class="form-group">
+          <label>Grupo destino</label>
+          <select id="wall-group-select">
+            <option value="all">Todos los grupos</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label>Mensaje / Indicacion</label>
+          <textarea id="wall-message" rows="3" placeholder="Escribe aqui tu aviso..."></textarea>
+        </div>
+        <button class="btn-primary full" onclick="_app('postWallMessage')">Publicar</button>
+        <div id="wall-posts" class="wall-posts-list"></div>
+      </section>
+
+      <!-- PERFIL -->
+      <section id="t-profile" class="t-section">
+        <div class="section-title-row">
+          <h2>Mi Perfil</h2>
+        </div>
+        <div class="form-group">
+          <label>Nombre completo</label>
+          <input type="text" id="prof-name" placeholder="Lic. / Mtra. Nombre Apellido" />
+        </div>
+        <div class="form-group">
+          <label>Numero de WhatsApp</label>
+          <input type="tel" id="prof-phone" placeholder="10 digitos" />
+        </div>
+        <div class="form-group">
+          <label>Email</label>
+          <input type="email" id="prof-email" placeholder="correo@escuela.edu" />
+        </div>
+        <button class="btn-primary full" onclick="_app('saveProfile')">Guardar cambios</button>
+
+        <hr class="divider" />
+
+        <!-- === REGLAMENTO DE CLASE === -->
+        <div class="section-title-row" style="margin-bottom:8px">
+          <h3>📋 Reglamento de Clase</h3>
+          <select id="reg-group-select" onchange="App.loadReglamentoEditor()" style="font-size:12px;padding:6px 10px;width:auto">
+            <option value="">Grupo...</option>
+          </select>
+        </div>
+        <p style="font-size:12px;color:var(--text2);margin-bottom:12px;line-height:1.5">
+          Este reglamento se mostrara a cada alumno al registrarse. No podran acceder sin leerlo y firmarlo. La rubrica del grupo se agrega automaticamente.
+        </p>
+        <div class="form-group">
+          <label>Reglas de clase</label>
+          <textarea id="reg-reglas" rows="8" placeholder="1. Puntualidad: llegar a tiempo&#10;2. Respeto entre compañeros&#10;3. Prohibido el celular durante clase&#10;..."></textarea>
+        </div>
+        <button class="btn-outline" style="margin-bottom:8px" onclick="_app('insertReglamentoPlantilla')">Insertar plantilla base</button>
+        <div id="reglamento-rubrica-preview" class="reglamento-preview-box">
+          <p style="color:var(--text3);font-size:12px">Selecciona un grupo para previsualizar la rubrica que se incluira</p>
+        </div>
+        <button class="btn-primary full" onclick="_app('saveReglamento')">Guardar Reglamento</button>
+
+        <hr class="divider" />
+
+        <!-- === FIRMAS REGISTRADAS === -->
+        <div class="section-title-row" style="margin-bottom:8px">
+          <h3>Firmas de Reglamento</h3>
+          <select id="firmas-group-select" onchange="App.loadFirmasList()" style="font-size:12px;padding:6px 10px;width:auto">
+            <option value="">Grupo...</option>
+          </select>
+        </div>
+        <div id="firmas-list">
+          <p style="color:var(--text3);font-size:12px">Selecciona un grupo para ver las firmas</p>
+        </div>
+
+        <hr class="divider" />
+
+        <h3>Rubricas de evaluacion</h3>
+        <div class="rubric-edit" id="rubric-bach">
+          <h4>Bachillerato</h4>
+          <div id="rubric-bach-items"></div>
+        </div>
+        <div class="rubric-edit" id="rubric-lic">
+          <h4>Licenciatura</h4>
+          <div id="rubric-lic-items"></div>
+        </div>
+        <button class="btn-accent full" onclick="_app('saveRubrics')">Guardar rubricas</button>
+
+        <hr class="divider" />
+
+        <h3>Proyecto Integrador</h3>
+        <div class="rubric-edit">
+          <div class="rubric-row">
+            <label>% Teorico</label>
+            <input type="number" id="proj-teorico" min="0" max="100" value="50" />
+          </div>
+          <div class="rubric-row">
+            <label>% Exposicion</label>
+            <input type="number" id="proj-expo" min="0" max="100" value="50" />
+          </div>
+        </div>
+        <button class="btn-accent full" onclick="_app('saveProjectWeights')">Guardar pesos</button>
+
+        <hr class="divider" />
+
+        <h3>Exportar calificaciones</h3>
+        <div class="form-group">
+          <label>Grupo</label>
+          <select id="export-group-select">
+            <option value="">Selecciona grupo...</option>
+          </select>
+        </div>
+        <div class="export-btns">
+          <button class="btn-outline" onclick="_app('exportGrades', ['csv'])">Exportar CSV</button>
+          <button class="btn-outline" onclick="_app('exportGrades', ['xlsx'])">Exportar XLSX</button>
+        </div>
+      </section>
+
+      <!-- DETALLE DE GRUPO -->
+      <section id="t-group-detail" class="t-section">
+        <button class="back-btn" onclick="_app('showTeacherSection', ['groups'])">Grupos</button>
+        <div id="group-detail-content"></div>
+      </section>
+
+      <!-- DETALLE DE ACTIVIDAD -->
+      <section id="t-activity-detail" class="t-section">
+        <button class="back-btn" id="act-detail-back" onclick="_app('goBackFromActivity')">Atras</button>
+        <div id="activity-detail-content"></div>
+      </section>
+
+    </main>
+  </div>
+
+  <!-- APP ALUMNO -->
+  <div id="screen-student" class="screen">
+    <header class="app-header student">
+      <div class="header-left">
+        <div class="logo-mark xs">MC</div>
+        <span id="student-greeting">Hola</span>
+      </div>
+      <div class="header-right">
+        <button class="icon-btn" onclick="_app('logout')">⏻</button>
+      </div>
+    </header>
+
+    <nav class="bottom-nav">
+      <button class="nav-item active" data-section="s-dashboard" onclick="_app('showStudentSection', ['s-dashboard'])">
+        <span class="nav-icon">⊞</span><span>Inicio</span>
+      </button>
+      <button class="nav-item" data-section="s-activities" onclick="_app('showStudentSection', ['s-activities'])">
+        <span class="nav-icon">◈</span><span>Tareas</span>
+      </button>
+      <button class="nav-item" data-section="s-grades" onclick="_app('showStudentSection', ['s-grades'])">
+        <span class="nav-icon">★</span><span>Califs</span>
+      </button>
+      <button class="nav-item" data-section="s-wall" onclick="_app('showStudentSection', ['s-wall'])">
+        <span class="nav-icon">◎</span><span>Muro</span>
+      </button>
+      <button class="nav-item" data-section="s-reglamento" onclick="_app('showStudentSection', ['s-reglamento'])">
+        <span class="nav-icon">📋</span><span>Reglas</span>
+      </button>
+    </nav>
+
+    <main class="teacher-content">
+      <section id="s-dashboard" class="t-section active">
+        <div class="section-title-row"><h2>Mi Panel</h2></div>
+        <div id="s-group-info-card"></div>
+        <div id="s-upcoming-activities"></div>
+      </section>
+      <section id="s-activities" class="t-section">
+        <div class="section-title-row"><h2>Actividades</h2></div>
+        <div class="tabs-row">
+          <button class="tab-btn active" onclick="_app('filterStudentActivities', ['pending'])">Pendientes</button>
+          <button class="tab-btn" onclick="_app('filterStudentActivities', ['submitted'])">Entregadas</button>
+          <button class="tab-btn" onclick="_app('filterStudentActivities', ['all'])">Todas</button>
+        </div>
+        <div id="s-activities-list"></div>
+      </section>
+      <section id="s-grades" class="t-section">
+        <div class="section-title-row"><h2>Mis Calificaciones</h2></div>
+        <div id="s-grades-content"></div>
+      </section>
+      <section id="s-wall" class="t-section">
+        <div class="section-title-row"><h2>Muro</h2></div>
+        <div id="s-wall-posts"></div>
+      </section>
+      <!-- Reglamento visible para el alumno (consulta) -->
+      <section id="s-reglamento" class="t-section">
+        <div class="section-title-row"><h2>Reglamento y Rubrica</h2></div>
+        <div id="s-reglamento-content"></div>
+      </section>
+      <section id="s-activity-submit" class="t-section">
+        <button class="back-btn" onclick="_app('showStudentSection', ['s-activities'])">Atras</button>
+        <div id="s-activity-submit-content"></div>
+      </section>
+    </main>
+  </div>
+
+</div><!-- #app -->
+
+<!-- MODAL -->
+<div id="modal-overlay" class="modal-overlay" onclick="_app('closeModal', [event])">
+  <div class="modal-box" id="modal-box" onclick="event.stopPropagation()">
+    <button class="modal-close" onclick="_app('closeModal')">X</button>
+    <div id="modal-content"></div>
+  </div>
+</div>
+
+<!-- TOAST -->
+<div id="toast" class="toast"></div>
+
+<script src="app.js"></script>
+<script src="sw-register.js"></script>
+</body>
+</html>
