@@ -473,13 +473,11 @@ function toggleGroupConfig(gid, key) {
   const groups = DB.getGroups();
   const i = groups.findIndex(g => g.id === gid);
   if (i < 0) return;
-  // Toggle the current value
   const current = groups[i][key] !== false;
   groups[i][key] = !current;
   DB.setGroups(groups);
   const newVal = groups[i][key];
   toast(newVal ? 'Activado' : 'Desactivado', 'success');
-  // Update button visual without full re-render
   const btnId = key === 'showGrades' ? 'cfg-btn-grades' : 'cfg-btn-att';
   const btn = document.getElementById(btnId);
   if (btn) {
@@ -488,6 +486,13 @@ function toggleGroupConfig(gid, key) {
     btn.style.color = newVal ? 'white' : 'var(--text2)';
     btn.style.borderColor = newVal ? 'var(--green)' : 'var(--border)';
   }
+}
+
+function toggleGroupConfigBtn(btn) {
+  const gid = btn.dataset.gid;
+  const key = btn.dataset.key;
+  if (!gid || !key) return;
+  toggleGroupConfig(gid, key);
 }
 
 function previewGroupLogo(input) {
@@ -720,7 +725,7 @@ function renderGroupDetail(group) {
             <div style="font-size:14px;font-weight:700">Alumnos pueden ver sus calificaciones</div>
             <div style="font-size:12px;color:var(--text2);margin-top:2px">Si está desactivado, los alumnos ven candado</div>
           </div>
-          <button id="cfg-btn-grades" onclick="App.toggleGroupConfig('${group.id}','showGrades')"
+          <button id="cfg-btn-grades" data-gid="${group.id}" data-key="showGrades" onclick="App.toggleGroupConfigBtn(this)"
             style="padding:8px 20px;border-radius:20px;border:2px solid;font-weight:700;font-size:13px;cursor:pointer;transition:all .2s;background:${group.showGrades!==false?'var(--green)':'var(--bg4)'};color:${group.showGrades!==false?'white':'var(--text2)'};border-color:${group.showGrades!==false?'var(--green)':'var(--border)'}">
             ${group.showGrades!==false?'Activado':'Desactivado'}
           </button>
@@ -729,7 +734,7 @@ function renderGroupDetail(group) {
           <div>
             <div style="font-size:14px;font-weight:700">Alumnos pueden ver la asistencia</div>
           </div>
-          <button id="cfg-btn-att" onclick="App.toggleGroupConfig('${group.id}','showAttendance')"
+          <button id="cfg-btn-att" data-gid="${group.id}" data-key="showAttendance" onclick="App.toggleGroupConfigBtn(this)"
             style="padding:8px 20px;border-radius:20px;border:2px solid;font-weight:700;font-size:13px;cursor:pointer;transition:all .2s;background:${group.showAttendance!==false?'var(--green)':'var(--bg4)'};color:${group.showAttendance!==false?'white':'var(--text2)'};border-color:${group.showAttendance!==false?'var(--green)':'var(--border)'}">
             ${group.showAttendance!==false?'Activado':'Desactivado'}
           </button>
@@ -991,6 +996,7 @@ function renderActivityDetail(aid) {
   const subs = DB.getSubmissionsByActivity(aid);
   const students = act.targetAll ? (group?.students || []) : (act.targets||[]).map(t=>({name:t}));
   const isLate = act.dueDate && Date.now() > act.dueDate;
+  const projW = DB.getProjectWeights();
 
   document.getElementById('activity-detail-content').innerHTML = `
     <div style="margin-bottom:16px">
