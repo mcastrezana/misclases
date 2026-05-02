@@ -203,6 +203,9 @@
       <button class="nav-item" data-section="attendance" onclick="_app('showTeacherSection', ['attendance'])">
         <span class="nav-icon">✓</span><span>Asistencia</span>
       </button>
+        <button class="nav-item" data-section="participation" onclick="App.showTeacherSection('participation')">
+          <span class="nav-icon">✋</span><span>Particip.</span>
+        </button>
       <button class="nav-item" data-section="grades" onclick="_app('showTeacherSection', ['grades'])">
         <span class="nav-icon">◈</span><span>Califs</span>
       </button>
@@ -226,7 +229,7 @@
             <button class="qa-btn" onclick="_app('quickAttendance')">
               <span>✓</span>Pasar lista
             </button>
-            <button class="qa-btn" onclick="_app('showTeacherSection', ['groups');App.showCreateGroup(])">
+            <button class="qa-btn" onclick="App.showTeacherSection('groups');App.showCreateGroup()">
               <span>+</span>Nuevo grupo
             </button>
             <button class="qa-btn" onclick="_app('openCreateActivity')">
@@ -285,6 +288,29 @@
         <div id="attendance-list-wrap"></div>
         <div id="att-save-btn-wrap" style="display:none">
           <button class="btn-primary full" onclick="_app('saveAttendance')">Guardar</button>
+        </div>
+      </section>
+
+
+      <!-- PARTICIPACIÓN -->
+      <section id="t-participation" class="t-section">
+        <div class="section-title-row"><h2>Participacion</h2></div>
+        <div class="form-group">
+          <label>Grupo</label>
+          <select id="part-group-select" onchange="App.loadParticipationSection(this.value)">
+            <option value="">Selecciona grupo...</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label>Fecha de clase</label>
+          <input type="date" id="part-date" />
+        </div>
+        <p style="font-size:12px;color:var(--text2);margin-bottom:8px">
+          Toca + cada vez que un alumno participe. Al guardar se calcula la calificacion proporcional al que mas participo.
+        </p>
+        <div id="participation-list-wrap" style="display:flex;flex-direction:column;gap:4px"></div>
+        <div id="part-save-btn" style="display:none;margin-top:12px">
+          <button class="btn-primary full" onclick="App.saveParticipationSection()">Guardar participacion del dia</button>
         </div>
       </section>
 

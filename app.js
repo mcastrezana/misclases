@@ -453,9 +453,10 @@ function createGroup() {
   const hours = document.getElementById('ng-hours').value;
   const studentsRaw = document.getElementById('ng-students').value.trim().split('\n').filter(l => l.trim());
   if (!name || !subject || !startDate || !endDate) { toast('Completa nombre, materia y fechas', 'error'); return; }
-  const codeInput = (document.getElementById('ng-code')?.value.trim().toUpperCase() || '').replace(/\s+/g,'');
-  const code = codeInput || name.replace(/\s+/g,'').toUpperCase();
-  // Verificar que el codigo no exista ya
+  // Código = lo que escribió el docente en el campo, o el nombre tal cual
+  const rawCode = document.getElementById('ng-code')?.value.trim() || name.trim();
+  const code = rawCode.toUpperCase();
+  if (!code) { toast('Ingresa un nombre de grupo', 'error'); return; }
   if (DB.getGroups().find(g => g.code === code)) { toast('Ese codigo ya existe, elige otro', 'error'); return; }
   const students = studentsRaw.map(l => ({ name: l.trim(), registered: false, phone: '', pass: '' }));
   const group = { id: uid(), name, subject, level, startDate, endDate, days, hours, code, students, createdAt: Date.now(), archived: false };
@@ -468,16 +469,25 @@ function createGroup() {
 
 
 /* ─── CONFIG DE GRUPO ─── */
-function toggleGroupConfig(gid, key, value) {
+function toggleGroupConfig(gid, key) {
   const groups = DB.getGroups();
   const i = groups.findIndex(g => g.id === gid);
   if (i < 0) return;
-  groups[i][key] = value;
+  // Toggle the current value
+  const current = groups[i][key] !== false;
+  groups[i][key] = !current;
   DB.setGroups(groups);
-  toast(value ? 'Activado' : 'Desactivado', 'success');
-  // Update toggle visual
-  const cb = document.getElementById(key === 'showGrades' ? 'cfg-show-grades' : 'cfg-show-att');
-  if (cb) cb.checked = value;
+  const newVal = groups[i][key];
+  toast(newVal ? 'Activado' : 'Desactivado', 'success');
+  // Update button visual without full re-render
+  const btnId = key === 'showGrades' ? 'cfg-btn-grades' : 'cfg-btn-att';
+  const btn = document.getElementById(btnId);
+  if (btn) {
+    btn.textContent = newVal ? 'Activado' : 'Desactivado';
+    btn.style.background = newVal ? 'var(--green)' : 'var(--bg4)';
+    btn.style.color = newVal ? 'white' : 'var(--text2)';
+    btn.style.borderColor = newVal ? 'var(--green)' : 'var(--border)';
+  }
 }
 
 function previewGroupLogo(input) {
@@ -518,7 +528,7 @@ function switchAttTab(tab, btn) {
 function suggestCode(name) {
   const el = document.getElementById('ng-code');
   if (!el || el.dataset.manual === 'true') return;
-  el.value = name.replace(/\s+/g,'').toUpperCase().substr(0,10);
+  el.value = name.trim().toUpperCase();
   el.addEventListener('input', () => el.dataset.manual = 'true', { once: true });
 }
 
@@ -705,28 +715,24 @@ function renderGroupDetail(group) {
     <!-- CONFIG -->
     <div id="dt-config" class="detail-panel">
       <div style="display:flex;flex-direction:column;gap:14px">
-        <div style="display:flex;align-items:center;justify-content:space-between;background:var(--bg3);padding:14px;border-radius:var(--radius-sm)">
+        <div style="display:flex;align-items:center;justify-content:space-between;background:var(--bg3);padding:16px;border-radius:var(--radius-sm)">
           <div>
             <div style="font-size:14px;font-weight:700">Alumnos pueden ver sus calificaciones</div>
-            <div style="font-size:12px;color:var(--text2);margin-top:2px">Si está desactivado, los alumnos ven el candado</div>
+            <div style="font-size:12px;color:var(--text2);margin-top:2px">Si está desactivado, los alumnos ven candado</div>
           </div>
-          <label style="position:relative;display:inline-block;width:48px;height:26px;flex-shrink:0">
-            <input type="checkbox" id="cfg-show-grades" ${group.showGrades!==false?'checked':''} onclick="App.toggleGroupConfig('${group.id}','showGrades',this.checked)" style="width:18px;height:18px;accent-color:var(--green);cursor:pointer" />
-            <span style="position:absolute;cursor:pointer;inset:0;background:${group.showGrades!==false?'var(--green)':'var(--bg4)'};border-radius:26px;transition:.3s">
-              <span style="position:absolute;content:'';height:20px;width:20px;left:${group.showGrades!==false?'24px':'3px'};bottom:3px;background:white;border-radius:50%;transition:.3s;display:block"></span>
-            </span>
-          </label>
+          <button id="cfg-btn-grades" onclick="App.toggleGroupConfig('${group.id}','showGrades')"
+            style="padding:8px 20px;border-radius:20px;border:2px solid;font-weight:700;font-size:13px;cursor:pointer;transition:all .2s;background:${group.showGrades!==false?'var(--green)':'var(--bg4)'};color:${group.showGrades!==false?'white':'var(--text2)'};border-color:${group.showGrades!==false?'var(--green)':'var(--border)'}">
+            ${group.showGrades!==false?'Activado':'Desactivado'}
+          </button>
         </div>
-        <div style="display:flex;align-items:center;justify-content:space-between;background:var(--bg3);padding:14px;border-radius:var(--radius-sm)">
+        <div style="display:flex;align-items:center;justify-content:space-between;background:var(--bg3);padding:16px;border-radius:var(--radius-sm)">
           <div>
             <div style="font-size:14px;font-weight:700">Alumnos pueden ver la asistencia</div>
           </div>
-          <label style="position:relative;display:inline-block;width:48px;height:26px;flex-shrink:0">
-            <input type="checkbox" id="cfg-show-att" ${group.showAttendance!==false?'checked':''} onclick="App.toggleGroupConfig('${group.id}','showAttendance',this.checked)" style="width:18px;height:18px;accent-color:var(--green);cursor:pointer" />
-            <span style="position:absolute;cursor:pointer;inset:0;background:${group.showAttendance!==false?'var(--green)':'var(--bg4)'};border-radius:26px;transition:.3s">
-              <span style="position:absolute;content:'';height:20px;width:20px;left:${group.showAttendance!==false?'24px':'3px'};bottom:3px;background:white;border-radius:50%;transition:.3s;display:block"></span>
-            </span>
-          </label>
+          <button id="cfg-btn-att" onclick="App.toggleGroupConfig('${group.id}','showAttendance')"
+            style="padding:8px 20px;border-radius:20px;border:2px solid;font-weight:700;font-size:13px;cursor:pointer;transition:all .2s;background:${group.showAttendance!==false?'var(--green)':'var(--bg4)'};color:${group.showAttendance!==false?'white':'var(--text2)'};border-color:${group.showAttendance!==false?'var(--green)':'var(--border)'}">
+            ${group.showAttendance!==false?'Activado':'Desactivado'}
+          </button>
         </div>
       </div>
     </div>
@@ -1198,27 +1204,63 @@ function importAttendancePDF(input) {
   const gid = document.getElementById('att-group-select').value;
   const group = DB.getGroup(gid);
   if (!group) { toast('Selecciona un grupo primero', 'error'); return; }
-  showModal(`
-    <div class="modal-title">Importar asistencia desde PDF</div>
-    <p style="font-size:13px;color:var(--text2);margin-bottom:12px">
-      Como el PDF del portal no permite copiar texto directamente, pega los nombres y el estado de asistencia manualmente, o usa el formato: <b>NOMBRE APELLIDO: A</b> (uno por linea). Tambien puedes capturar la asistencia directamente con los botones A/R/J/F.
-    </p>
-    <p style="font-size:12px;color:var(--yellow);margin-bottom:8px">
-      Formato aceptado: <code>GARCIA LOPEZ MARIA: A</code> o simplemente captura con los botones de la lista.
-    </p>
-    <div class="form-group">
-      <label>Fecha de la clase</label>
-      <input type="date" id="imp-date" value="${new Date().toISOString().split('T')[0]}" />
-    </div>
-    <div class="form-group">
-      <label>Pega el texto del PDF aqui</label>
-      <textarea id="imp-text" rows="8" placeholder="Pega aqui el contenido copiado del PDF..."></textarea>
-    </div>
-    <div style="background:var(--bg3);border-radius:8px;padding:10px;margin-bottom:12px;font-size:12px;color:var(--text2)">
-      <b>Leyenda:</b> palomita/check = Asistencia &nbsp;|&nbsp; triangulo/! = Sin captura &nbsp;|&nbsp; tache/X = Falta &nbsp;|&nbsp; reloj = Retardo
-    </div>
-    <button class="btn-primary full" onclick="App.runImportPDF('${gid}')">Importar</button>
-  `);
+  const today = new Date().toISOString().split('T')[0];
+  // El PDF del portal ICEP es imagen escaneada - no tiene texto seleccionable
+  // Mostrar opciones: captura rápida por alumno, o ingresar manualmente
+  const students = group.students || [];
+  const studentRows = students.map(s => {
+    return '<div style="display:flex;align-items:center;gap:8px;padding:6px 0;border-bottom:1px solid var(--border)">' +
+      '<div style="flex:1;font-size:12px;font-weight:600">' + s.name + '</div>' +
+      '<div style="display:flex;gap:4px">' +
+        ['A','R','J','F'].map(opt =>
+          '<button onclick="App.setImportAtt(this,\'' + s.name.replace(/'/g,"\'") + '\')" data-val="' + opt + '" ' +
+          'style="width:32px;height:32px;border-radius:6px;border:1.5px solid var(--border);background:var(--bg3);font-weight:700;font-size:12px;cursor:pointer">' +
+          opt + '</button>'
+        ).join('') +
+      '</div>' +
+    '</div>';
+  }).join('');
+  showModal(
+    '<div class="modal-title">Captura rapida de asistencia</div>' +
+    '<p style="font-size:12px;color:var(--text2);margin-bottom:12px">El PDF del portal es una imagen y no permite copiar texto. Usa esta captura rapida: selecciona A/R/J/F para cada alumno.</p>' +
+    '<div class="form-group"><label>Fecha</label><input type="date" id="imp-date" value="' + today + '" /></div>' +
+    '<div style="max-height:350px;overflow-y:auto;margin-bottom:12px">' + studentRows + '</div>' +
+    '<button class="btn-primary full" onclick="App.confirmImportAtt(' + JSON.stringify(gid) + ')" >Guardar asistencia</button>'
+  );
+  window._importAttData = {};
+}
+
+function setImportAtt(btn, studentName) {
+  const val = btn.dataset.val;
+  const row = btn.closest('div[style*="border-bottom"]');
+  row.querySelectorAll('button[data-val]').forEach(b => {
+    b.style.background = 'var(--bg3)';
+    b.style.color = 'var(--text)';
+    b.style.borderColor = 'var(--border)';
+  });
+  const colors = {A:'var(--green)',R:'var(--yellow)',J:'var(--blue)',F:'var(--red)'};
+  btn.style.background = colors[val] || 'var(--accent)';
+  btn.style.color = 'white';
+  btn.style.borderColor = colors[val] || 'var(--accent)';
+  if (!window._importAttData) window._importAttData = {};
+  window._importAttData[studentName] = val;
+}
+
+function confirmImportAtt(btnOrGid) {
+  const gid = (typeof btnOrGid === 'string') ? btnOrGid : (btnOrGid?.dataset?.gid || '');
+  const date = document.getElementById('imp-date')?.value;
+  if (!date) { toast('Selecciona la fecha', 'error'); return; }
+  const records = window._importAttData || {};
+  const count = Object.keys(records).length;
+  if (count === 0) { toast('Selecciona al menos una asistencia', 'error'); return; }
+  const att = DB.getAttendance();
+  const i = att.findIndex(a => a.groupId === gid && a.date === date);
+  const entry = { groupId: gid, date, records, savedAt: Date.now() };
+  if (i >= 0) att[i] = entry; else att.push(entry);
+  DB.setAttendance(att);
+  closeModal();
+  toast(count + ' registros guardados para ' + date, 'success');
+  loadAttendanceList();
 }
 
 function runImportPDF(gid) {
@@ -1999,6 +2041,7 @@ return { login, logout, showScreen, goStudentLogin, showStudentStep,
   requestReopen, setAutoeval, renderStudentGrades, renderStudentDashboard,
   loadTeacherDashboard, loadTeacherApp, loadStudentApp,
   studentLoginDirect, loadParticipationSection, prepareParticipationSection, saveParticipationSection,
+  setImportAtt, confirmImportAtt,
   closeModal, createDemoData, init
 };
 
