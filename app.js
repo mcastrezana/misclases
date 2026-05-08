@@ -15,9 +15,71 @@ let attendanceTempData = {};
 let participationTempData = {};
 
 /* ─── ALMACENAMIENTO ─── */
+// Claves que se sincronizan con Firestore (las que necesitan compartirse entre dispositivos)
+const CLOUD_KEYS = new Set(['groups','activities','submissions','attendance','wall_posts','grades']);
+
 const DB = {
   get: (k) => { try { return JSON.parse(localStorage.getItem(k)) } catch { return null } },
-  set: (k, v) => localStorage.setItem(k, JSON.stringify(v)),
+  // write-through: guarda en localStorage Y sube a Firestore en segundo plano
+  set: (k, v) => {
+    localStorage.setItem(k, JSON.stringify(v));
+    if (CLOUD_KEYS.has(k)) DB._push(k, v);
+  },
+
+  // Sube un valor a Firestore (no bloquea la UI)
+  _push: async (key, value) => {
+    if (!window.db) return;
+    try {
+      await window.db.collection('app_data').doc(key).set({
+        payload: JSON.stringify(value),
+        ts: Date.now()
+      });
+    } catch(e) { console.warn('[Firestore] push error:', key, e.message); }
+  },
+
+  // Descarga todas las claves de la nube a localStorage
+  syncFromCloud: async () => {
+    if (!window.db) return;
+    for (const key of CLOUD_KEYS) {
+      try {
+        const doc = await window.db.collection('app_data').doc(key).get();
+        if (doc.exists) {
+          const parsed = JSON.parse(doc.data().payload);
+          localStorage.setItem(key, JSON.stringify(parsed));
+        }
+      } catch(e) { console.warn('[Firestore] pull error:', key, e.message); }
+    }
+  },
+
+  // Escucha cambios en tiempo real y actualiza localStorage + re-renderiza
+  startListeners: () => {
+    if (!window.db) return;
+    const reRender = (key) => {
+      const active = document.querySelector('.screen.active');
+      const id = active ? active.id : '';
+      if (key === 'groups' || key === 'activities') {
+        if (id === 'screen-teacher' && window.App) window.App.renderGroups && window.App.renderGroups();
+        if (id === 'screen-student' && window.App) window.App.renderStudentActivities && window.App.renderStudentActivities();
+      }
+      if (key === 'submissions' && id === 'screen-teacher' && window.App) {
+        window.App.openActivityDetail && window.App.openActivityDetail(currentActivityId);
+      }
+      if (key === 'wall_posts' && window.App) {
+        window.App.renderWall && window.App.renderWall();
+      }
+    };
+    CLOUD_KEYS.forEach(key => {
+      window.db.collection('app_data').doc(key).onSnapshot(doc => {
+        if (!doc.exists) return;
+        try {
+          const parsed = JSON.parse(doc.data().payload);
+          localStorage.setItem(key, JSON.stringify(parsed));
+          reRender(key);
+        } catch(e) { console.warn('[Firestore] snapshot error:', key, e.message); }
+      });
+    });
+  },
+
   getTeacher: () => DB.get('teacher_profile') || { name:'Mtra. Nombre Apellido', phone:'', email:'', pass:'1234' },
   getRubrics: () => DB.get('rubrics') || {
     bach: [
@@ -94,7 +156,6 @@ function showScreen(name) {
 
 /* ─── SPLASH ─── */
 function initSplash() {
-  // Forzar transicion aunque haya error
   function doTransition() {
     try {
       const splash = document.getElementById('splash');
@@ -112,15 +173,27 @@ function initSplash() {
       showScreen('login');
     }
   }
-  setTimeout(doTransition, 1200);
-  // Respaldo: si en 3s sigue en splash, forzar login
+
+  // Sincronizar desde Firestore antes de mostrar la app
+  // Si tarda más de 2.5s, se muestra la app con datos locales
+  const fallback = setTimeout(doTransition, 2500);
+  DB.syncFromCloud().then(() => {
+    clearTimeout(fallback);
+    DB.startListeners();
+    doTransition();
+  }).catch(() => {
+    clearTimeout(fallback);
+    doTransition();
+  });
+
+  // Respaldo absoluto: si en 4s sigue en splash, forzar login
   setTimeout(() => {
     const splash = document.getElementById('splash');
     if (splash && splash.classList.contains('active')) {
       splash.classList.remove('active');
       showScreen('login');
     }
-  }, 3000);
+  }, 4000);
 }
 
 /* ─── AUTH DOCENTE ─── */

@@ -1,7 +1,6 @@
-// Importa la función de inicialización de Firebase
-import { initializeApp } from 'firebase/app';
+// Firebase se carga desde CDN en index.html (scripts compat)
+// No se usan imports de npm porque esta app es vanilla JS sin bundler
 
-// For Firebase JS SDK v7.20.0 and later, measurementId is optional
 const firebaseConfig = {
   apiKey: "AIzaSyBrt-lsn4YGyKXdaaqDC1utgdoHEli5wIo",
   authDomain: "misclases-84d06.firebaseapp.com",
@@ -12,8 +11,9 @@ const firebaseConfig = {
   measurementId: "G-BG7V4JYVJN"
 };
 
-// Inicializa Firebase en tu aplicación
-const app = initializeApp(firebaseConfig);
+firebase.initializeApp(firebaseConfig);
 
-// Exporta 'app' si necesitas usarlo en otros archivos (por ejemplo, para Firestore o Auth)
-export default app;
+// Servicios disponibles globalmente para app.js
+window.db   = firebase.firestore();
+window.auth = firebase.auth();
+// Storage no disponible en plan gratuito con esta región — se usa WhatsApp para entregas
